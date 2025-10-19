@@ -41,9 +41,7 @@ jobs:
         with:
           node-version: 'latest'
           cache: 'npm'
-          
-
-
+        
       - name: 📦 Cache CocoaPods
         uses: actions/cache@v4
         with:
@@ -61,11 +59,9 @@ jobs:
         id: app_scheme
         run: echo "APP_SCHEME=$(jq -r .expo.scheme app.json)" >> $GITHUB_ENV
 
-
       # --- Code Signing and Provisioning ---
       # The following steps decode your base64 secrets into the files needed for signing.
       # This is done early to fail fast if secrets are misconfigured.
-
 
       - name: 🔐 Decode Provisioning Profile
         # This profile ties your app ID and certificate together.
@@ -86,14 +82,7 @@ jobs:
 
       - name: 🚀 Generate native iOS project and install dependencies
         # The 'prebuild' command generates the native 'ios' directory and installs pod dependencies.
-        run: npx expo prebuild --platform ios --clean
-
-      - name: 🤫 Suppress Pods warnings
-        run: |
-          sed -i '' "/target '${{ env.APP_SCHEME }}' do/i\\
-          inhibit_all_warnings!\\
-          \\
-          " ios/Podfile
+        run: npx expo prebuild --platform ios
 
       - name: 🐞 Debug Podfile
         run: |
@@ -114,9 +103,8 @@ jobs:
             -configuration Release \
             -archivePath $HOME/${{ env.APP_SCHEME }}.xcarchive \
             -destination 'generic/platform=iOS' \
-            -parallelizeTargets -quiet \
+            -parallelizeTargets \
             -allowProvisioningUpdates \
-            GCC_WARN_INHIBIT_ALL_WARNINGS=YES \
             PRODUCT_BUNDLE_IDENTIFIER=${{ secrets.BUNDLE_IDENTIFIER }} \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
             CODE_SIGN_STYLE=Manual \

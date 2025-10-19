@@ -28,6 +28,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withInhibitAllWarnings.js",
       [
         "expo-splash-screen",
         {
