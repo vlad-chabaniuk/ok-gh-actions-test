@@ -89,28 +89,8 @@ jobs:
         run: npx expo prebuild --platform ios --clean
 
       - name: 🤫 Suppress Pods warnings
-        run: |
-          podfile_path="ios/Podfile"
-          # Use awk to insert the suppression logic (from an env var) into the existing post_install block.
-          # This uses the ENVIRON array, which is the correct way to access multi-line env vars in awk.
-          awk '
-            /post_install do/ { in_post_install = 1 }
-            /^end$/ && in_post_install {
-              print ENVIRON["SUPPRESS_WARNINGS_HOOK"]
-              in_post_install = 0
-            }
-            { print }
-          ' "$podfile_path" > tmp && mv tmp "$podfile_path"
-        env:
-          SUPPRESS_WARNINGS_HOOK: |
-            installer.pods_project.targets.each do |target|
-              target.build_configurations.each do |config|
-                config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
-              end
-            end
-
-
-
+        run: git apply ../suppress-warnings.patch
+        working-directory: ./ios
 
       # --- Building the App ---
 

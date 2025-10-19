@@ -1,0 +1,12 @@
+--- a/ios/Podfile
++++ b/ios/Podfile
+@@ -60,4 +60,10 @@
+     :ccache_enabled => ccache_enabled?(podfile_properties),
+   )
+ 
++  installer.pods_project.targets.each do |target|
++    target.build_configurations.each do |config|
++      config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
++    end
++  end
+ end
