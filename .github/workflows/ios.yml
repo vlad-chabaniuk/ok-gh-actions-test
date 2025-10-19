@@ -41,6 +41,9 @@ jobs:
         with:
           node-version: 'latest'
           cache: 'npm'
+          
+      - name: 📦 Install JavaScript dependencies
+        run: npm install
         
       - name: 📦 Cache CocoaPods
         uses: actions/cache@v4
@@ -51,9 +54,6 @@ jobs:
           key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-pods-
-
-      - name: 📦 Install JavaScript dependencies
-        run: npm install
 
       - name: 🧐 Get App Scheme
         id: app_scheme
@@ -83,6 +83,14 @@ jobs:
       - name: 🚀 Generate native iOS project and install dependencies
         # The 'prebuild' command generates the native 'ios' directory and installs pod dependencies.
         run: npx expo prebuild --platform ios
+        
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-deriveddata-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-deriveddata-      
 
       - name: 🐞 Debug Podfile
         run: |
