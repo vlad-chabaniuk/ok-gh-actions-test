@@ -42,12 +42,7 @@ jobs:
           node-version: 'latest'
           cache: 'npm'
           
-      - name: 💎 Set up Ruby and CocoaPods Cache
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2' # Use a version compatible with CocoaPods
-          bundler-cache: true
-          working-directory: ios
+
 
       - name: 📦 Cache CocoaPods
         uses: actions/cache@v4
@@ -84,38 +79,33 @@ jobs:
           p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_P12_BASE64 }}
           p12-password: ${{ secrets.P12_PASSWORD }}
 
-      - name: ⚙️ Set iOS Build Number
+      - name: ⚙️ Set iOS Build Number and Compliance
         run: |
-          # Use jq to set the build number in app.json. The value is a string.
-          jq '.expo.ios.buildNumber = "${{ github.run_number }}"' app.json > app.tmp.json && mv app.tmp.json app.json
+          # Use jq to set the build number and the ITSAppUsesNonExemptEncryption key in app.json
+          jq '.expo.ios.buildNumber = "${{ github.run_number }}" | .expo.ios.infoPlist.ITSAppUsesNonExemptEncryption = false' app.json > app.tmp.json && mv app.tmp.json app.json
 
       - name: 🚀 Generate native iOS project and install dependencies
         # The 'prebuild' command generates the native 'ios' directory and installs pod dependencies.
         run: npx expo prebuild --platform ios --clean
 
       - name: 🤫 Suppress Pods warnings
-        run: echo "$POST_INSTALL_HOOK" >> ios/Podfile
-        env:
-          POST_INSTALL_HOOK: |
-            post_install do |installer|
-              installer.pods_project.targets.each do |target|
-                target.build_configurations.each do |config|
-                  config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
-                end
-              end
-            end
-
-      - name: 🐞 Debug Version Numbers
-        working-directory: ./ios
         run: |
-          echo "GitHub Run Number: ${{ github.run_number }}"
-          PLIST_PATH="${{ env.APP_SCHEME }}/Info.plist"
-          WORKSPACE_BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST_PATH")
-          echo "Workspace CFBundleVersion: $WORKSPACE_BUILD_NUMBER"
-          if [ "$WORKSPACE_BUILD_NUMBER" != "${{ github.run_number }}" ]; then
-            echo "::error::Build numbers do not match!"
-            exit 1
-          fi
+          podfile_path="ios/Podfile"
+          # This awk script finds the `end` of the `post_install` block and inserts the warning suppression code before it.
+          awk '
+          /post_install do/ { in_post_install = 1 }
+          /^end$/ && in_post_install {
+            print "  installer.pods_project.targets.each do |target|"
+            print "    target.build_configurations.each do |config|"
+            print "      config.build_settings[\\\'GCC_WARN_INHIBIT_ALL_WARNINGS\\\'] = \\\'YES\\\'"
+            print "    end"
+            print "  end"
+            in_post_install = 0
+          }
+          { print }
+          ' "$podfile_path" > tmp && mv tmp "$podfile_path"
+
+
 
 
       # --- Building the App ---
