@@ -41,6 +41,23 @@ jobs:
         with:
           node-version: 'latest'
           cache: 'npm'
+          
+      - name: 💎 Set up Ruby and CocoaPods Cache
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2' # Use a version compatible with CocoaPods
+          bundler-cache: true
+          working-directory: ios
+
+      - name: 📦 Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Pods
+            ~/Library/Caches/CocoaPods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
 
       - name: 📦 Install JavaScript dependencies
         run: npm install
