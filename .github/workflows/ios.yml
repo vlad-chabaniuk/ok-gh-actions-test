@@ -77,7 +77,9 @@ jobs:
         run: npx expo prebuild --platform ios --clean
 
       - name: 🤫 Suppress Pods warnings
-        run: echo "inhibit_all_warnings!" >> ios/Podfile
+        run: |
+          podfile_path="ios/Podfile"
+          awk '/platform :ios/ {print; print "inhibit_all_warnings!"; next} 1' "$podfile_path" > tmp && mv tmp "$podfile_path"
 
 
       # --- Building the App ---
