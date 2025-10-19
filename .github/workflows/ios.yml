@@ -91,11 +91,12 @@ jobs:
       - name: 🤫 Suppress Pods warnings
         run: |
           podfile_path="ios/Podfile"
-          # Use awk to insert the suppression logic (from an env var) into the existing post_install block
-          awk -v hook="$SUPPRESS_WARNINGS_HOOK" '
+          # Use awk to insert the suppression logic (from an env var) into the existing post_install block.
+          # This uses the ENVIRON array, which is the correct way to access multi-line env vars in awk.
+          awk '
             /post_install do/ { in_post_install = 1 }
             /^end$/ && in_post_install {
-              print hook
+              print ENVIRON["SUPPRESS_WARNINGS_HOOK"]
               in_post_install = 0
             }
             { print }
