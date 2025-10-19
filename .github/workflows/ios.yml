@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: ⬇️ Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v5
@@ -45,8 +45,11 @@ jobs:
       - name: 📦 Install JavaScript dependencies
         run: npm install
         
+      - name: Install xcbeautify
+        run: brew install xcbeautify
+        
       - name: 📦 Cache CocoaPods
-        uses: actions/cache@v5
+        uses: actions/cache@v4
         with:
           path: |
             ios/Pods
@@ -91,19 +94,8 @@ jobs:
       - name: 🚀 Generate native iOS project and install dependencies
         # The 'prebuild' command generates the native 'ios' directory and installs pod dependencies.
         run: npx expo prebuild --platform ios
-        
-      
-
-      - name: 🐞 Debug Podfile
-        run: |
-          echo "--- Podfile Content ---"
-          cat ios/Podfile
-          echo "--- End Podfile Content ---"
 
       # --- Building the App ---
-      
-      - name: Install xcbeautify
-        run: brew install xcbeautify
 
       - name: 🏗️ Build and Archive iOS App
         # This uses xcodebuild to archive the app, which is the first step before exporting an .ipa.
