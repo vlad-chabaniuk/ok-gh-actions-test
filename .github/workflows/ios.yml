@@ -90,9 +90,9 @@ jobs:
 
       - name: 🤫 Suppress Pods warnings
         run: |
-          # Insert `inhibit_all_warnings!` before the main target, with a blank line for readability.
           sed -i '' "/target '${{ env.APP_SCHEME }}' do/i\\
-          inhibit_all_warnings!\\\
+          inhibit_all_warnings!\\
+          \\
           " ios/Podfile
 
       - name: 🐞 Debug Podfile
