@@ -110,42 +110,43 @@ jobs:
         # It requires an ExportOptions.plist file. We generate one on the fly.
         working-directory: ./ios
         run: |
-          PLIST_PATH="ExportOptions.plist"
-          cat > $PLIST_PATH <<EOF
-      <?xml version="1.0" encoding="UTF-8"?>
-      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-      <plist version="1.0">
-      <dict>
-          <key>method</key>
-          <string>app-store</string>
-          <key>provisioningProfiles</key>
-          <dict>
-              <key>${{ secrets.BUNDLE_IDENTIFIER }}</key>
-              <string>${{ secrets.PROVISIONING_PROFILE_NAME }}</string>
-          </dict>
-          <key>signingCertificate</key>
-          <string>Apple Distribution</string>
-          <key>signingStyle</key>
-          <string>manual</string>
-          <key>stripSwiftSymbols</key>
-          <true/>
-          <key>teamID</key>
-          <string>${{ secrets.APPLE_TEAM_ID }}</string>
-          <key>uploadBitcode</key>
-          <false/>
-          <key>uploadSymbols</key>
-          <true/>
-      </dict>
-      </plist>
-      EOF
+          # Create the ExportOptions.plist from the multiline environment variable
+          echo "$PLIST_CONTENT" > ExportOptions.plist
 
+          # Run the export command
           xcodebuild -exportArchive \
                      -archivePath $HOME/${{ env.APP_SCHEME }}.xcarchive \
                      -exportPath $RUNNER_TEMP/build \
-                     -exportOptionsPlist $PLIST_PATH \
+                     -exportOptionsPlist ExportOptions.plist \
                      -allowProvisioningUpdates
         env:
-            PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
+          PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
+          PLIST_CONTENT: |
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>method</key>
+                <string>app-store</string>
+                <key>provisioningProfiles</key>
+                <dict>
+                    <key>${{ secrets.BUNDLE_IDENTIFIER }}</key>
+                    <string>${{ secrets.PROVISIONING_PROFILE_NAME }}</string>
+                </dict>
+                <key>signingCertificate</key>
+                <string>Apple Distribution</string>
+                <key>signingStyle</key>
+                <string>manual</string>
+                <key>stripSwiftSymbols</key>
+                <true/>
+                <key>teamID</key>
+                <string>${{ secrets.APPLE_TEAM_ID }}</string>
+                <key>uploadBitcode</key>
+                <false/>
+                <key>uploadSymbols</key>
+                <true/>
+            </dict>
+            </plist>
 
       # --- Deployment ---
 
