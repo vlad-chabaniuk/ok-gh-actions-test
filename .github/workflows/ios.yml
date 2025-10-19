@@ -54,11 +54,6 @@ jobs:
       # The following steps decode your base64 secrets into the files needed for signing.
       # This is done early to fail fast if secrets are misconfigured.
 
-      - name: 🔐 Decode App Store Connect API Key
-        # This key is used to authenticate with Apple for uploading the build.
-        run: |
-          mkdir -p ~/private_keys
-          echo -n "${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}" | base64 --decode -o ~/private_keys/AuthKey_${{ secrets.APPLE_KEY_ID }}.p8
 
       - name: 🔐 Decode Provisioning Profile
         # This profile ties your app ID and certificate together.
@@ -159,14 +154,13 @@ jobs:
 
       - name: 🚀 Upload to TestFlight
         # Finally, this command uses xcrun altool to upload the .ipa to App Store Connect.
-        # It authenticates using the API Key we decoded earlier.
+        # It authenticates using an Apple ID and an app-specific password.
         run: |
           xcrun altool --upload-app \
                        --type ios \
                        --file "$RUNNER_TEMP/build/${{ env.APP_SCHEME }}.ipa" \
-                       --issuer-id "${{ secrets.APPLE_ISSUER_ID }}" \
-                       --key-id "${{ secrets.APPLE_KEY_ID }}" \
-                       --api-key-path "$HOME/private_keys/AuthKey_${{ secrets.APPLE_KEY_ID }}.p8"
+                       --username "${{ secrets.APPLE_ID_USERNAME }}" \
+                       --password "${{ secrets.APP_SPECIFIC_PASSWORD }}"
 
       - name: 🧹 Clean up provisioning profile
         if: always()
