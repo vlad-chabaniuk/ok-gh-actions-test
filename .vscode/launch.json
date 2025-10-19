@@ -1,0 +1,12 @@
+  {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Attach to packager",
+        "request": "attach",
+        "cwd": "${workspaceFolder}",
+        "type": "expo",
+        "port": 19000 // Default Expo packager port
+      }
+    ]
+  }

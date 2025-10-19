@@ -1,0 +1,136 @@
+# This workflow automates the process of building, signing, and deploying an
+# Expo (prebuilt) React Native app to the Apple App Store / TestFlight.
+#
+# It is designed to work WITHOUT Fastlane or EAS, relying on xcodebuild and xcrun altool.
+#
+# For this to work, you must set up the required GitHub Secrets.
+# See the accompanying `ios_deployment_guide.md` for a full walkthrough.
+
+name: Deploy iOS App
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Deployment Target'
+        required: true
+        default: 'testflight'
+        type: choice
+        options:
+        - testflight
+        - appstore
+
+  # Example of a push trigger. Uncomment and customize as needed.
+  # push:
+  #   branches:
+  #     - main # Deploy to TestFlight on pushes to main
+  #     - 'release/**' # Deploy to App Store on pushes to release branches
+
+jobs:
+  build-and-deploy-ios:
+    name: Build and Deploy to App Store
+    runs-on: macos-latest # iOS builds must run on a macOS runner
+
+    steps:
+      - name: ⬇️ Check out repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+          cache: 'npm'
+
+      - name: 📦 Install JavaScript dependencies
+        run: npm install
+
+      - name: 🧐 Get App Scheme
+        id: app_scheme
+        run: echo "APP_SCHEME=$(jq -r .expo.scheme app.json)" >> $GITHUB_ENV
+
+
+      # --- Code Signing and Provisioning ---
+      # The following steps decode your base64 secrets into the files needed for signing.
+      # This is done early to fail fast if secrets are misconfigured.
+
+      - name: 🔐 Decode App Store Connect API Key
+        # This key is used to authenticate with Apple for uploading the build.
+        run: |
+          mkdir -p ~/private_keys
+          echo -n "${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}" | base64 --decode -o ~/private_keys/AuthKey_${{ secrets.APPLE_KEY_ID }}.p8
+
+      - name: 🔐 Decode Provisioning Profile
+        # This profile ties your app ID and certificate together.
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo -n "${{ secrets.PROVISIONING_PROFILE_BASE64 }}" | base64 --decode -o ~/Library/MobileDevice/Provisioning\ Profiles/build.mobileprovision
+
+      - name: 🔐 Import Code Signing Certificates
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_P12_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
+
+      - name: 🚀 Generate native iOS project and install dependencies
+        # The 'prebuild' command generates the native 'ios' directory and installs pod dependencies.
+        run: npx expo prebuild --platform ios --clean
+
+      - name: 🤫 Suppress Pods warnings
+        run: echo "inhibit_all_warnings!" >> ios/Podfile
+
+
+      # --- Building the App ---
+
+      - name: 🏗️ Build and Archive iOS App
+        # This uses xcodebuild to archive the app, which is the first step before exporting an .ipa.
+        # We set the build number to the unique GitHub run number to ensure it's always incremental.
+        working-directory: ./ios
+        run: |
+          xcodebuild \
+            -workspace ${{ env.APP_SCHEME }}.xcworkspace \
+            -scheme ${{ env.APP_SCHEME }} \
+            -configuration Release \
+            -archivePath $HOME/${{ env.APP_SCHEME }}.xcarchive \
+            -destination 'generic/platform=iOS' \
+            -parallelizeTargets -quiet \
+            -allowProvisioningUpdates \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            PRODUCT_BUNDLE_IDENTIFIER=${{ secrets.BUNDLE_IDENTIFIER }} \
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            CODE_SIGN_STYLE=Manual \
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            archive 
+
+      - name: 📦 Export the .ipa file
+        # This step exports the final .ipa file from the .xcarchive created previously.
+        # It requires an ExportOptions.plist file. We generate one on the fly.
+        working-directory: ./ios
+        run: |
+          xcodebuild -exportArchive \
+                     -archivePath $HOME/${{ env.APP_SCHEME }}.xcarchive \
+                     -exportPath $RUNNER_TEMP/build \
+                     -exportOptionsPlist ExportOptions.plist \
+                     -allowProvisioningUpdates
+        env:
+            PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
+
+      # --- Deployment ---
+
+      - name: 🚀 Upload to TestFlight
+        # Finally, this command uses xcrun altool to upload the .ipa to App Store Connect.
+        # It authenticates using the API Key we decoded earlier.
+        run: |
+          xcrun altool --upload-app \
+                       --type ios \
+                       --file "$RUNNER_TEMP/build/${{ env.APP_SCHEME }}.ipa" \
+                       --issuer-id "${{ secrets.APPLE_ISSUER_ID }}" \
+                       --key-id "${{ secrets.APPLE_KEY_ID }}" \
+                       --api-key-path "~/private_keys/AuthKey_${{ secrets.APPLE_KEY_ID }}.p8"
+
+      - name: 🧹 Clean up keychain and provisioning profile
+        if: always()
+        run: |
+          rm -f ~/Library/MobileDevice/Provisioning\ Profiles/build.mobileprovision
+          security delete-keychain build.keychain
