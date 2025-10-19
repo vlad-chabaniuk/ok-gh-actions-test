@@ -95,6 +95,12 @@ jobs:
           inhibit_all_warnings!\\\
           " ios/Podfile
 
+      - name: 🐞 Debug Podfile
+        run: |
+          echo "--- Podfile Content ---"
+          cat ios/Podfile
+          echo "--- End Podfile Content ---"
+
       # --- Building the App ---
 
       - name: 🏗️ Build and Archive iOS App
