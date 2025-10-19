@@ -99,13 +99,16 @@ jobs:
           echo "--- End Podfile Content ---"
 
       # --- Building the App ---
+      
+      - name: Install xcbeautify
+        run: brew install xcbeautify
 
       - name: 🏗️ Build and Archive iOS App
         # This uses xcodebuild to archive the app, which is the first step before exporting an .ipa.
         # The build number is now set via app.json, so CURRENT_PROJECT_VERSION is not needed here.
         working-directory: ./ios
         run: |
-          xcodebuild \
+          set -o pipefail && xcodebuild \
             -workspace ${{ env.APP_SCHEME }}.xcworkspace \
             -scheme ${{ env.APP_SCHEME }} \
             -configuration Release \
@@ -118,7 +121,7 @@ jobs:
             CODE_SIGN_STYLE=Manual \
             PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            archive 
+            archive | xcbeautify
 
       - name: 📦 Export the .ipa file
         # This step exports the final .ipa file from the .xcarchive created previously.
