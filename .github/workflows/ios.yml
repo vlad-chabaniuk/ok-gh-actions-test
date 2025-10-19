@@ -89,8 +89,11 @@ jobs:
         run: npx expo prebuild --platform ios --clean
 
       - name: 🤫 Suppress Pods warnings
-        run: git apply ../suppress-warnings.patch
-        working-directory: ./ios
+        run: |
+          # Insert `inhibit_all_warnings!` before the main target, with a blank line for readability.
+          sed -i '' "/target '${{ env.APP_SCHEME }}' do/i\\
+          inhibit_all_warnings!\\\
+          " ios/Podfile
 
       # --- Building the App ---
 
