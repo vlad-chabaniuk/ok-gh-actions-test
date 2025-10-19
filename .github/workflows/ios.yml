@@ -91,19 +91,22 @@ jobs:
       - name: 🤫 Suppress Pods warnings
         run: |
           podfile_path="ios/Podfile"
-          # This awk script finds the `end` of the `post_install` block and inserts the warning suppression code before it.
-          awk '
-          /post_install do/ { in_post_install = 1 }
-          /^end$/ && in_post_install {
-            print "  installer.pods_project.targets.each do |target|"
-            print "    target.build_configurations.each do |config|"
-            print "      config.build_settings[\\\'GCC_WARN_INHIBIT_ALL_WARNINGS\\\'] = \\\'YES\\\'"
-            print "    end"
-            print "  end"
-            in_post_install = 0
-          }
-          { print }
+          # Use awk to insert the suppression logic (from an env var) into the existing post_install block
+          awk -v hook="$SUPPRESS_WARNINGS_HOOK" '
+            /post_install do/ { in_post_install = 1 }
+            /^end$/ && in_post_install {
+              print hook
+              in_post_install = 0
+            }
+            { print }
           ' "$podfile_path" > tmp && mv tmp "$podfile_path"
+        env:
+          SUPPRESS_WARNINGS_HOOK: |
+            installer.pods_project.targets.each do |target|
+              target.build_configurations.each do |config|
+                config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+              end
+            end
 
 
 
