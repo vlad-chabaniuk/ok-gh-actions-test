@@ -166,10 +166,9 @@ jobs:
                        --file "$RUNNER_TEMP/build/${{ env.APP_SCHEME }}.ipa" \
                        --issuer-id "${{ secrets.APPLE_ISSUER_ID }}" \
                        --key-id "${{ secrets.APPLE_KEY_ID }}" \
-                       --api-key-path "~/private_keys/AuthKey_${{ secrets.APPLE_KEY_ID }}.p8"
+                       --api-key-path "$HOME/private_keys/AuthKey_${{ secrets.APPLE_KEY_ID }}.p8"
 
-      - name: 🧹 Clean up keychain and provisioning profile
+      - name: 🧹 Clean up provisioning profile
         if: always()
         run: |
           rm -f ~/Library/MobileDevice/Provisioning\ Profiles/build.mobileprovision
-          security delete-keychain build.keychain
