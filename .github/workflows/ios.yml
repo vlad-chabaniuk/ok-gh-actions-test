@@ -151,9 +151,9 @@ jobs:
                 <string>manual</string>
                 <key>stripSwiftSymbols</key>
                 <true/>
-                <key>teamID</key>
                 <key>testFlightInternalTestingOnly</key>
                 <true/>
+                <key>teamID</key>
                 <string>${{ secrets.APPLE_TEAM_ID }}</string>
                 <key>uploadBitcode</key>
                 <false/>
