@@ -77,9 +77,16 @@ jobs:
         run: npx expo prebuild --platform ios --clean
 
       - name: 🤫 Suppress Pods warnings
-        run: |
-          podfile_path="ios/Podfile"
-          awk '/platform :ios/ {print; print "inhibit_all_warnings!"; next} 1' "$podfile_path" > tmp && mv tmp "$podfile_path"
+        run: echo "$POST_INSTALL_HOOK" >> ios/Podfile
+        env:
+          POST_INSTALL_HOOK: |
+            post_install do |installer|
+              installer.pods_project.targets.each do |target|
+                target.build_configurations.each do |config|
+                  config.build_settings['GCC_WARN_INHIBIT_ALL_WARNINGS'] = 'YES'
+                end
+              end
+            end
 
 
       # --- Building the App ---
