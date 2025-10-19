@@ -67,6 +67,11 @@ jobs:
           p12-file-base64: ${{ secrets.BUILD_CERTIFICATE_P12_BASE64 }}
           p12-password: ${{ secrets.P12_PASSWORD }}
 
+      - name: ⚙️ Set iOS Build Number
+        run: |
+          # Use jq to set the build number in app.json. The value is a string.
+          jq '.expo.ios.buildNumber = "${{ github.run_number }}"' app.json > app.tmp.json && mv app.tmp.json app.json
+
       - name: 🚀 Generate native iOS project and install dependencies
         # The 'prebuild' command generates the native 'ios' directory and installs pod dependencies.
         run: npx expo prebuild --platform ios --clean
@@ -83,12 +88,24 @@ jobs:
               end
             end
 
+      - name: 🐞 Debug Version Numbers
+        working-directory: ./ios
+        run: |
+          echo "GitHub Run Number: ${{ github.run_number }}"
+          PLIST_PATH="${{ env.APP_SCHEME }}/Info.plist"
+          WORKSPACE_BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST_PATH")
+          echo "Workspace CFBundleVersion: $WORKSPACE_BUILD_NUMBER"
+          if [ "$WORKSPACE_BUILD_NUMBER" != "${{ github.run_number }}" ]; then
+            echo "::error::Build numbers do not match!"
+            exit 1
+          fi
+
 
       # --- Building the App ---
 
       - name: 🏗️ Build and Archive iOS App
         # This uses xcodebuild to archive the app, which is the first step before exporting an .ipa.
-        # We set the build number to the unique GitHub run number to ensure it's always incremental.
+        # The build number is now set via app.json, so CURRENT_PROJECT_VERSION is not needed here.
         working-directory: ./ios
         run: |
           xcodebuild \
@@ -99,7 +116,7 @@ jobs:
             -destination 'generic/platform=iOS' \
             -parallelizeTargets -quiet \
             -allowProvisioningUpdates \
-            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            GCC_WARN_INHIBIT_ALL_WARNINGS=YES \
             PRODUCT_BUNDLE_IDENTIFIER=${{ secrets.BUNDLE_IDENTIFIER }} \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
             CODE_SIGN_STYLE=Manual \
@@ -129,7 +146,7 @@ jobs:
             <plist version="1.0">
             <dict>
                 <key>method</key>
-                <string>app-store</string>
+                <string>app-store-connect</string>
                 <key>provisioningProfiles</key>
                 <dict>
                     <key>${{ secrets.BUNDLE_IDENTIFIER }}</key>
